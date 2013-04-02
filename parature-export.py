@@ -72,7 +72,7 @@ class Parature(Resource):
 		resource_type = type(self).__name__
 
 		count = self.api_list_count()
-		total_pages = int(math.ceil(int(count) / LIST_PAGE_SIZE))
+		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
 		print str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
 
 		#Cut the range down by the start page var
@@ -123,8 +123,7 @@ if __name__ == "__main__":
 
 	c = get_config('./config')
 
-	print c['API_TOKEN']
 	#a = Account()
 	#a.export()
-	#t = Ticket()
-	#t.export()
+	t = Ticket()
+	t.export()
