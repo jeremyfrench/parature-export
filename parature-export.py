@@ -1,8 +1,10 @@
 from restkit import Resource #pip install restkit
-from lxml import etree #apt-get install libxml2-dev libxslt-dev & pip install lxml
+import xml.etree.ElementTree as etree
 import urllib2
 import math
 import os
+import datetime
+import time
 
 def get_config(config_path):
 	config_vars = dict()
@@ -20,20 +22,20 @@ def throttle(min_period):
    """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
    def _throttle(fn):
       calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
-      def __throttle(*params):
-         elapsed = datetime.datetime.now() - calltime[0]
-         elapsed = utils.timedelta_to_seconds(elapsed)
+      def __throttle(*params, **kwargs):
+         td = datetime.datetime.now() - calltime[0]
+         elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 6
          if elapsed < min_period:
             wait_time = min_period - elapsed
             time.sleep(wait_time)
-         rv = fn(*params)
+         rv = fn(*params, **kwargs)
          calltime[0] = datetime.datetime.now()
          return rv
       return __throttle
    return _throttle
 
 def pretty(etree_root):
-	return etree.tostring(etree_root, pretty_print=True)
+	return etree.tostring(etree_root)
 
 def save_attachments(resource, subdirectory):
 
