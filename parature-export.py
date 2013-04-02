@@ -4,19 +4,24 @@ import urllib2
 import math
 import os
 
-PARATURE_URL = "https://s5.parature.com/api/v1/"
-API_TOKEN = ""
-API_ACCOUNT_ID = "00000"
-API_DEPARTMENT_ID = "00000"
-LIST_PAGE_SIZE = 500
-JOB_ID = "subdirectory-to-output-results-to"
+def get_config(config_path):
+	config_vars = dict()
+
+	with open(config_path) as f:
+	    for line in f:
+	        eq_index = line.find('=')
+	        var_name = line[:eq_index].strip()
+	        value = line[eq_index + 1:].strip()
+	        config_vars[var_name] = value
+
+	return config_vars	
 
 def pretty(etree_root):
 	return etree.tostring(etree_root, pretty_print=True)
 
 def save_attachments(resource, subdirectory):
 
-	file_path = "./" + JOB_ID + "/" + subdirectory + "/" 
+	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
 
 	attachment_list = resource.findall(".//Attachment")
 
@@ -34,7 +39,7 @@ def save_attachments(resource, subdirectory):
 		data_file.close()
 
 def save_XML(data, subdirectory, filename):
-	file_path = "./" + JOB_ID + "/" + subdirectory + "/" + filename + ".xml"
+	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" + filename + ".xml"
 	
 	if not os.path.exists(os.path.dirname(file_path)):
 	    os.makedirs(os.path.dirname(file_path))
@@ -45,7 +50,7 @@ def save_XML(data, subdirectory, filename):
 
 class Parature(Resource):
 	def __init__(self, **kwargs):
-		self.api_url = PARATURE_URL + "/" + API_ACCOUNT_ID + "/" + API_DEPARTMENT_ID + "/" + self.api_resource_path
+		self.api_url = c['PARATURE_URL'] + "/" + c['API_ACCOUNT_ID'] + "/" + c['API_DEPARTMENT_ID'] + "/" + self.api_resource_path
 		super(Parature, self).__init__(self.api_url, follow_redirect=True, max_follow_redirect=10, **kwargs)
 
 	def request(self, *args, **kwargs):
@@ -54,10 +59,10 @@ class Parature(Resource):
 		return root
 
 	def api_get(self, id):
-		return self.get(str(id), _token_ = API_TOKEN, _history_ = True)
+		return self.get(str(id), _token_ = c['API_TOKEN'], _history_ = True)
 
 	def api_list(self, count=False, page=0):
-		return self.get(_token_ = API_TOKEN, _total_ = count, _pageSize_ = LIST_PAGE_SIZE, _startPage_ = page, _order_ = "Date_Created_desc_")
+		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_desc_")
 
 	def api_list_count(self):
 		doc = self.api_list(True)
@@ -115,8 +120,11 @@ class Download(Parature):
 		super(Ticket, self).__init__()
 
 if __name__ == "__main__":
-	
+
+	c = get_config('./config')
+
+	print c['API_TOKEN']
 	#a = Account()
 	#a.export()
-	t = Ticket()
-	t.export()
+	#t = Ticket()
+	#t.export()
