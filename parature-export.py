@@ -4,12 +4,17 @@ import urllib2
 import math
 import os
 
-PARATURE_URL = "https://s5.parature.com/api/v1/"
-API_TOKEN = ""
-API_ACCOUNT_ID = "00000"
-API_DEPARTMENT_ID = "00000"
-LIST_PAGE_SIZE = 500
-JOB_ID = "subdirectory-to-output-results-to"
+def get_config(config_path):
+	config_vars = dict()
+
+	with open(config_path) as f:
+	    for line in f:
+	        eq_index = line.find('=')
+	        var_name = line[:eq_index].strip()
+	        value = line[eq_index + 1:].strip()
+	        config_vars[var_name] = value
+
+	return config_vars	
 
 def throttle(min_period):
    """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
@@ -32,27 +37,25 @@ def pretty(etree_root):
 
 def save_attachments(resource, subdirectory):
 
-	attachment_list = resource.findall("Attachment")
-	if attachment_list != None:
-		for attachment in attachment_list:
-			#This bit isn't doing anything - find ticketattachment then loop through attachments
-			url = attachment.attrib['href']
-			print url
-	exit(-1)
+	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
 
-	url = ""
-	file_path = "./" + JOB_ID + "/" + subdirectory + "/" + filename
-	
-	if not os.path.exists(os.path.dirname(file_path)):
-	    os.makedirs(os.path.dirname(file_path))
+	attachment_list = resource.findall(".//Attachment")
 
-	data_file = open(file_path, 'w')
-	response = urllib2.urlopen(url)
-	data_file.write(response.read())
-	data_file.close()
+	if attachment_list and not os.path.exists(os.path.dirname(file_path)):
+		os.makedirs(os.path.dirname(file_path))
+
+	for attachment in attachment_list:
+
+		url = attachment.attrib['href']
+		filename = file_path + attachment.find('Name').text
+
+		data_file = open(filename, 'w')
+		response = urllib2.urlopen(url)
+		data_file.write(response.read())
+		data_file.close()
 
 def save_XML(data, subdirectory, filename):
-	file_path = "./" + JOB_ID + "/" + subdirectory + "/" + filename + ".xml"
+	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" + filename + ".xml"
 	
 	if not os.path.exists(os.path.dirname(file_path)):
 	    os.makedirs(os.path.dirname(file_path))
@@ -63,7 +66,7 @@ def save_XML(data, subdirectory, filename):
 
 class Parature(Resource):
 	def __init__(self, **kwargs):
-		self.api_url = PARATURE_URL + "/" + API_ACCOUNT_ID + "/" + API_DEPARTMENT_ID + "/" + self.api_resource_path
+		self.api_url = c['PARATURE_URL'] + "/" + c['API_ACCOUNT_ID'] + "/" + c['API_DEPARTMENT_ID'] + "/" + self.api_resource_path
 		super(Parature, self).__init__(self.api_url, follow_redirect=True, max_follow_redirect=10, **kwargs)
 
 	def request(self, *args, **kwargs):
@@ -73,11 +76,11 @@ class Parature(Resource):
 
 	@throttle(1)
 	def api_get(self, id):
-		return self.get(str(id), _token_ = API_TOKEN, _history_ = True)
+		return self.get(str(id), _token_ = c['API_TOKEN'], _history_ = True)
 
         @throttle(1)
 	def api_list(self, count=False, page=0):
-		return self.get(_token_ = API_TOKEN, _total_ = count, _pageSize_ = LIST_PAGE_SIZE, _startPage_ = page, _order_ = "Date_Created_asc_")
+		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_asc_")
 
         @throttle(1)
 	def api_list_count(self):
@@ -88,7 +91,7 @@ class Parature(Resource):
 		resource_type = type(self).__name__
 
 		count = self.api_list_count()
-		total_pages = int(math.ceil(int(count) / LIST_PAGE_SIZE))
+		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
 		print str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
 
 		#Cut the range down by the start page var
@@ -102,7 +105,8 @@ class Parature(Resource):
 					resource_id = resource.attrib['id']
 					resource_full = self.api_get(resource_id)
 
-					save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=object_id)
+					save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
+					save_attachments(resource_full, resource_type + "/" + resource_id)
 
 class Account(Parature):
 	def __init__(self, **kwargs):
@@ -135,8 +139,8 @@ class Download(Parature):
 		super(Ticket, self).__init__()
 
 if __name__ == "__main__":
-	
-	a = Account()
-	a.export()
-	#t = Ticket()
-	#t.export()
+	c = get_config('./config')
+	#a = Account()
+	#a.export()
+	t = Ticket()
+	t.export()
