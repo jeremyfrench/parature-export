@@ -16,24 +16,22 @@ def pretty(etree_root):
 
 def save_attachments(resource, subdirectory):
 
-	attachment_list = resource.findall("Attachment")
-	if attachment_list != None:
-		for attachment in attachment_list:
-			#This bit isn't doing anything - find ticketattachment then loop through attachments
-			url = attachment.attrib['href']
-			print url
-	exit(-1)
+	file_path = "./" + JOB_ID + "/" + subdirectory + "/" 
 
-	url = ""
-	file_path = "./" + JOB_ID + "/" + subdirectory + "/" + filename
-	
-	if not os.path.exists(os.path.dirname(file_path)):
-	    os.makedirs(os.path.dirname(file_path))
+	attachment_list = resource.findall(".//Attachment")
 
-	data_file = open(file_path, 'w')
-	response = urllib2.urlopen(url)
-	data_file.write(response.read())
-	data_file.close()
+	if attachment_list and not os.path.exists(os.path.dirname(file_path)):
+		os.makedirs(os.path.dirname(file_path))
+
+	for attachment in attachment_list:
+
+		url = attachment.attrib['href']
+		filename = file_path + attachment.find('Name').text
+
+		data_file = open(filename, 'w')
+		response = urllib2.urlopen(url)
+		data_file.write(response.read())
+		data_file.close()
 
 def save_XML(data, subdirectory, filename):
 	file_path = "./" + JOB_ID + "/" + subdirectory + "/" + filename + ".xml"
@@ -59,7 +57,7 @@ class Parature(Resource):
 		return self.get(str(id), _token_ = API_TOKEN, _history_ = True)
 
 	def api_list(self, count=False, page=0):
-		return self.get(_token_ = API_TOKEN, _total_ = count, _pageSize_ = LIST_PAGE_SIZE, _startPage_ = page, _order_ = "Date_Created_asc_")
+		return self.get(_token_ = API_TOKEN, _total_ = count, _pageSize_ = LIST_PAGE_SIZE, _startPage_ = page, _order_ = "Date_Created_desc_")
 
 	def api_list_count(self):
 		doc = self.api_list(True)
@@ -83,7 +81,8 @@ class Parature(Resource):
 					resource_id = resource.attrib['id']
 					resource_full = self.api_get(resource_id)
 
-					save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=object_id)
+					save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
+					save_attachments(resource_full, resource_type + "/" + resource_id)
 
 class Account(Parature):
 	def __init__(self, **kwargs):
@@ -117,7 +116,7 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	
-	a = Account()
-	a.export()
-	#t = Ticket()
-	#t.export()
+	#a = Account()
+	#a.export()
+	t = Ticket()
+	t.export()
