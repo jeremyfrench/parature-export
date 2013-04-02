@@ -11,6 +11,22 @@ API_DEPARTMENT_ID = "00000"
 LIST_PAGE_SIZE = 500
 JOB_ID = "subdirectory-to-output-results-to"
 
+def throttle(min_period):
+   """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
+   def _throttle(fn):
+      calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
+      def __throttle(*params):
+         elapsed = datetime.datetime.now() - calltime[0]
+         elapsed = utils.timedelta_to_seconds(elapsed)
+         if elapsed < min_period:
+            wait_time = min_period - elapsed
+            time.sleep(wait_time)
+         rv = fn(*params)
+         calltime[0] = datetime.datetime.now()
+         return rv
+      return __throttle
+   return _throttle
+
 def pretty(etree_root):
 	return etree.tostring(etree_root, pretty_print=True)
 
@@ -55,12 +71,15 @@ class Parature(Resource):
 		root = etree.fromstring(response.body_string())
 		return root
 
+	@throttle(1)
 	def api_get(self, id):
 		return self.get(str(id), _token_ = API_TOKEN, _history_ = True)
 
+        @throttle(1)
 	def api_list(self, count=False, page=0):
 		return self.get(_token_ = API_TOKEN, _total_ = count, _pageSize_ = LIST_PAGE_SIZE, _startPage_ = page, _order_ = "Date_Created_asc_")
 
+        @throttle(1)
 	def api_list_count(self):
 		doc = self.api_list(True)
 		return doc.attrib['total']
