@@ -62,7 +62,7 @@ class Parature(Resource):
 		return self.get(str(id), _token_ = c['API_TOKEN'], _history_ = True)
 
 	def api_list(self, count=False, page=0):
-		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_desc_")
+		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_asc_")
 
 	def api_list_count(self):
 		doc = self.api_list(True)
