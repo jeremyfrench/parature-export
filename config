@@ -1,6 +1,6 @@
-PARATURE_URL = "https://s5.parature.com/api/v1/"
-API_TOKEN = ""
-API_ACCOUNT_ID = "00000"
-API_DEPARTMENT_ID = "00000"
+PARATURE_URL = https://s5.parature.com/api/v1/
+API_TOKEN = 
+API_ACCOUNT_ID = 00000
+API_DEPARTMENT_ID = 00000
 LIST_PAGE_SIZE = 500
-JOB_ID = "subdirectory-to-output-results-to"
+JOB_ID = subdirectory-to-output-results-to
