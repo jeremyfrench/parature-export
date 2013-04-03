@@ -24,10 +24,10 @@ def throttle(min_period):
       calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
       def __throttle(*params, **kwargs):
          td = datetime.datetime.now() - calltime[0]
-         elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 6
+         elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
          if elapsed < min_period:
             wait_time = min_period - elapsed
-            time.sleep(wait_time)
+            time.sleep(wait_time/1000)
          rv = fn(*params, **kwargs)
          calltime[0] = datetime.datetime.now()
          return rv
@@ -76,15 +76,15 @@ class Parature(Resource):
 		root = etree.fromstring(response.body_string())
 		return root
 
-	@throttle(1)
+	@throttle(600)
 	def api_get(self, id):
 		return self.get(str(id), _token_ = c['API_TOKEN'], _history_ = True)
 
-        @throttle(1)
+        @throttle(600)
 	def api_list(self, count=False, page=0):
 		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_asc_")
 
-        @throttle(1)
+        @throttle(600)
 	def api_list_count(self):
 		doc = self.api_list(True)
 		return doc.attrib['total']
@@ -106,7 +106,6 @@ class Parature(Resource):
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
 					resource_full = self.api_get(resource_id)
-
 					save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
 					save_attachments(resource_full, resource_type + "/" + resource_id)
 
