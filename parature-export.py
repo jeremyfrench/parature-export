@@ -1,4 +1,4 @@
-from restkit import Resource #pip install restkit
+from restkit import Resource  # pip install restkit
 import xml.etree.ElementTree as etree
 import urllib2
 import math
@@ -27,7 +27,7 @@ def throttle(min_period):
          elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
          if elapsed < min_period:
             wait_time = min_period - elapsed
-            time.sleep(wait_time/1000)
+            time.sleep(wait_time / 1000)
          rv = fn(*params, **kwargs)
          calltime[0] = datetime.datetime.now()
          return rv
@@ -58,7 +58,7 @@ def save_attachments(resource, subdirectory):
 
 def save_XML(data, subdirectory, filename):
 	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" + filename + ".xml"
-	
+	print filename
 	if not os.path.exists(os.path.dirname(file_path)):
 	    os.makedirs(os.path.dirname(file_path))
 
@@ -78,31 +78,60 @@ class Parature(Resource):
 
 	@throttle(600)
 	def api_get(self, id):
-		return self.get(str(id), _token_ = c['API_TOKEN'], _history_ = True)
+		return self.get(str(id), _token_=c['API_TOKEN'], _history_=True)
 
-        @throttle(600)
+	@throttle(600)
 	def api_list(self, count=False, page=0):
-		return self.get(_token_ = c['API_TOKEN'], _total_ = count, _pageSize_ = c['LIST_PAGE_SIZE'], _startPage_ = page, _order_ = "Date_Created_asc_")
+		return self.get(_token_=c['API_TOKEN'], _total_=count, _pageSize_=c['LIST_PAGE_SIZE'], _startPage_=page, _order_="Date_Created_asc_")
 
-        @throttle(600)
+	@throttle(600)
 	def api_list_count(self):
 		doc = self.api_list(True)
 		return doc.attrib['total']
 
-	def export(self, start_page = 0):
+	def export(self, start_page=0):
 		resource_type = type(self).__name__
 
 		count = self.api_list_count()
 		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
+		
 		print str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
-
-		#Cut the range down by the start page var
-		for i in range(total_pages):
+		page_start = 1
+		skip = 0
+		# Check for exsisting items
+		dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/"
+		if os.path.exists(dir_path):
+			done_file_count = len(os.listdir(dir_path))
+			if (done_file_count == count) :
+				print "All of this type done, skipping"
+				return
+			else:
+				print "looks like an export ran before, picking up where we left off"
+				done_page = math.floor(done_file_count / int(c['LIST_PAGE_SIZE'])) + 1
+				list_doc = self.api_list(page=done_page)
+				resource_list = list_doc.findall(resource_type)
+				offset = done_file_count % int(c['LIST_PAGE_SIZE'])
+				last_resource = resource_list[offset-1]
+				#check that the last resource is as expected.
+				if os.path.exists(dir_path + last_resource.attrib['id'] + '.xml'): 
+					next_resource = resource_list[offset]
+					if not os.path.exists(dir_path + next_resource.attrib['id'] + '.xml'): 
+						#set the start page and offset so they can pick up where we left off
+						page_start = int(done_page)
+		    			skip = offset
+		    			
+		# Cut the range down by the start page var
+		for i in range(page_start,total_pages):
 			print "Processing page " + str(i)
-			list_doc = self.api_list(page = i)
-
+			list_doc = self.api_list(page=i)
+			print len(list_doc)
 			resource_list = list_doc.findall(resource_type)
+			
 			if resource_list != None:
+				#Skip items if set
+				resource_list = resource_list[skip:]
+				#reset skip for subsequent pages
+				skip = 0
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
 					resource_full = self.api_get(resource_id)
@@ -141,7 +170,7 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	c = get_config('./config')
-	#a = Account()
-	#a.export()
+	# a = Account()
+	# a.export()
 	t = Ticket()
 	t.export()
