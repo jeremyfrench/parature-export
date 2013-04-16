@@ -172,5 +172,21 @@ if __name__ == "__main__":
 	c = get_config('./config')
 	# a = Account()
 	# a.export()
+
 	t = Ticket()
 	t.export()
+
+	a = Account()
+	a.export()
+
+	csr = Csr()
+	csr.export()
+
+	d = Download()
+	d.export()
+
+	kb = KnowledgeBase()
+	kb.export()
+
+	cust = Customer()
+	cust.export()
