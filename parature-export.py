@@ -1,4 +1,5 @@
 from restkit import Resource  # pip install restkit
+from restkit.errors import ResourceError, RequestFailed, RequestError 
 import xml.etree.ElementTree as etree
 import urllib2
 import math
@@ -140,7 +141,7 @@ class Parature(Resource):
 						resource_full = self.api_get(resource_id)
 						save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
 						save_attachments(resource_full, resource_type + "/" + resource_id)
-					except: ResourceError
+					except ResourceError:
 						print 'Error getting resource ' + resource_id
 class Account(Parature):
 	def __init__(self, **kwargs):
