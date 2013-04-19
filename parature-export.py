@@ -156,27 +156,27 @@ class Ticket(Parature):
 class Customer(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Customer/"
-		super(Ticket, self).__init__()
+		super(Customer, self).__init__()
 
 class Csr(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Csr/"
-		super(Ticket, self).__init__()
+		super(Csr, self).__init__()
 
-class KnowledgeBase(Parature):
+class Article(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Article/"
-		super(Ticket, self).__init__()
+		super(Article, self).__init__()
 
 class Download(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Download/"
-		super(Ticket, self).__init__()
+		super(Download, self).__init__()
 
 if __name__ == "__main__":
 	c = get_config('./config')
-	# a = Account()
-	# a.export()
+	a = Account()
+	a.export()
 
 	t = Ticket()
 	t.export()
@@ -190,8 +190,8 @@ if __name__ == "__main__":
 	d = Download()
 	d.export()
 
-	kb = KnowledgeBase()
-	kb.export()
+	ar = Article()
+	ar.export()
 
 	cust = Customer()
 	cust.export()
