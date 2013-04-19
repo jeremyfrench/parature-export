@@ -5,6 +5,7 @@ import math
 import os
 import datetime
 import time
+import re
 
 def get_config(config_path):
 	config_vars = dict()
@@ -101,7 +102,8 @@ class Parature(Resource):
 		# Check for exsisting items
 		dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/"
 		if os.path.exists(dir_path):
-			done_file_count = len(os.listdir(dir_path))
+			files = [f for f in os.listdir(dir_path) if re.match(r'.*\.xml', f)]
+			done_file_count = len(files)
 			if (done_file_count == count) :
 				print "All of this type done, skipping"
 				return
