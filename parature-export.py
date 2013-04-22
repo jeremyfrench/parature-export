@@ -53,14 +53,16 @@ def save_attachments(resource, subdirectory):
 		url = attachment.attrib['href']
 		filename = file_path + attachment.find('Name').text
 
-		data_file = open(filename, 'w')
-		response = urllib2.urlopen(url)
-		data_file.write(response.read())
-		data_file.close()
+		try:			
+			data_file = open(filename, 'w')
+			response = urllib2.urlopen(url)
+			data_file.write(response.read())
+			data_file.close()
+		except:
+			print "Could not download " + filename + " from " + str(resource.attrib['id'])
 
 def save_XML(data, subdirectory, filename):
 	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" + filename + ".xml"
-	print filename
 	if not os.path.exists(os.path.dirname(file_path)):
 	    os.makedirs(os.path.dirname(file_path))
 
@@ -127,7 +129,7 @@ class Parature(Resource):
 		for i in range(page_start,total_pages):
 			print "Processing page " + str(i)
 			list_doc = self.api_list(page=i)
-			print len(list_doc)
+			print str(len(list_doc)) + " items in this page"
 			resource_list = list_doc.findall(resource_type)
 			
 			if resource_list != None:
@@ -138,6 +140,7 @@ class Parature(Resource):
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
 					try:
+						print "Getting " + resource_type + " ID " + str(resource_id)
 						resource_full = self.api_get(resource_id)
 						save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
 						save_attachments(resource_full, resource_type + "/" + resource_id)
@@ -175,17 +178,15 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	c = get_config('./config')
-	a = Account()
-	a.export()
-
-	t = Ticket()
-	t.export()
-
-	a = Account()
-	a.export()
-
+	
 	csr = Csr()
 	csr.export()
+
+	cust = Customer()
+	cust.export()
+
+	a = Account()
+	a.export()
 
 	d = Download()
 	d.export()
@@ -193,5 +194,5 @@ if __name__ == "__main__":
 	ar = Article()
 	ar.export()
 
-	cust = Customer()
-	cust.export()
+	t = Ticket()
+	t.export()
