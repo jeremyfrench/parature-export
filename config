@@ -1,6 +1,10 @@
 PARATURE_URL = https://s5.parature.com/api/v1/
 API_TOKEN = 
-API_ACCOUNT_ID = 00000
-API_DEPARTMENT_ID = 00000
-LIST_PAGE_SIZE = 500
-JOB_ID = subdirectory-to-output-results-to
+API_ACCOUNT_ID = 000
+API_DEPARTMENT_ID = 000
+LIST_PAGE_SIZE = 100
+JOB_ID = Subdirectory-to-export-to
+LOG_FILE = export.log
+LOG_LEVEL = 20
+LOG_FORMAT = %(asctime)s [%(levelname)s] %(message)s
+LOG_DATE_FORMAT = %m/%d/%Y %I:%M:%S %p

@@ -2,6 +2,7 @@ from restkit import Resource  # pip install restkit
 from restkit.errors import ResourceError, RequestFailed, RequestError
 from urlparse import urlsplit
 from BeautifulSoup import BeautifulSoup
+import logging
 import base64
 import xml.etree.ElementTree as etree
 import urllib2
@@ -45,21 +46,21 @@ def pretty(etree_root):
 def url2name(url):
 	return os.path.basename(urlsplit(url)[2])
 
-def save(file_data, filename, path = None):
+def save(file_data, filename, path = None, log_type = "I/O"):
 	if path:
 		if not os.path.exists(path):
 			os.makedirs(path)
 			
 	filename = str(path) + filename
 	
-	print "[INFO] I/O: Saving " + filename
+	logging.info(log_type + ": Saving " + filename)
 
 	try:
 		f = open(filename, 'wb')
 		f.write(file_data)
 		f.close()
 	except IOError as e:
-		print "[ERROR] I/O: Error number {0}: {1}".format(e.errno, e.strerror)
+		logging.error(log_type + ": Error number {0}: {1}".format(e.errno, e.strerror))
 
 def download(url, filename_override = None, path = None):
 	filename = url2name(url)
@@ -78,7 +79,7 @@ def download(url, filename_override = None, path = None):
 		# we can force to save the file as specified name
 		filename = filename_override
 
-	save(r.read(), filename, path)
+	save(r.read(), filename, path, "Binary")
 
 def extract_binaries(resource, subdirectory):
 
@@ -105,7 +106,7 @@ def extract_binaries(resource, subdirectory):
 			base64_string = url.split("base64,")[1]
 			filename = "embedded_" + base64_string[:15] + filetype
 
-			save(base64.decodestring(base64_string), filename, path)
+			save(base64.decodestring(base64_string), filename, path, "Binary")
 		else:
 			items.append({'filename': None, 'url': url})
 
@@ -114,14 +115,14 @@ def extract_binaries(resource, subdirectory):
 		try:
 			download(item['url'], item['filename'], path)	
 		except urllib2.HTTPError, e:
-			print "[ERROR] HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id'])
+			logging.error("HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
 		except:
-			print "[ERROR] HTTP: Unknown error downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id'])
+			logging.error("HTTP: Unknown error downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
 
 def extract_XML(data, subdirectory, filename):
 	filename = filename + ".xml"
 	path = "./" + c['JOB_ID'] + "/" + subdirectory + "/"
-	save(data, filename, path)
+	save(data, filename, path, "Data resource")
 
 class Parature(Resource):
 	def __init__(self, **kwargs):
@@ -152,7 +153,7 @@ class Parature(Resource):
 		count = self.api_list_count()
 		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
 		
-		print "[INFO] Processing: " + str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
+		logging.info("Processing: " + str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)")
 		page_start = start_page
 		skip = 0
 		# Check for exsisting items
@@ -161,10 +162,10 @@ class Parature(Resource):
 			files = [f for f in os.listdir(dir_path) if re.match(r'.*\.xml', f)]
 			done_file_count = len(files)
 			if (done_file_count == count) :
-				print "[INFO] Processing: All of this type done, skipping"
+				logging.info("Processing: All of this type done, skipping")
 				return
 			else:
-				print "[INFO] Processing: Previous export identified, restarting from last position"
+				logging.info("Processing: Previous export identified, restarting from last position")
 				done_page = math.floor(done_file_count / int(c['LIST_PAGE_SIZE'])) + 1
 				list_doc = self.api_list(page=done_page)
 				resource_list = list_doc.findall(resource_type)
@@ -180,7 +181,7 @@ class Parature(Resource):
 						
 		# Cut the range down by the start page var
 		for i in range(page_start,total_pages):
-			print "[INFO] Processing: " + resource_type + " page " + str(i)
+			logging.info("Processing: " + resource_type + " page " + str(i))
 			list_doc = self.api_list(page=i)
 			resource_list = list_doc.findall(resource_type)
 			
@@ -192,12 +193,12 @@ class Parature(Resource):
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
 					try:
-						print "[INFO] API: Getting " + resource_type + " ID " + str(resource_id)
+						logging.info("API: Getting " + resource_type + " ID " + str(resource_id))
 						resource_full = self.api_get(resource_id)
 						extract_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
 						extract_binaries(resource_full, resource_type + "/" + resource_id)
 					except:
-						print '[ERROR] API: Unknown error getting resource ' + resource_id
+						logging.error("API: Unknown error getting resource " + resource_id)
 class Account(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Account/"
@@ -229,35 +230,36 @@ class Download(Parature):
 		super(Download, self).__init__()
 
 if __name__ == "__main__":
-
-	print "[INFO] Script: Job starting"
 	
+	now = datetime.datetime.now()
+	start_timestamp = str(now.year) + str(now.month) + str(now.day) + str(now.hour) + str(now.minute) + str(now.second)
 	c = get_config('./config')
-	
-	print "[INFO] Script: Config loaded"
+	logging.basicConfig(filename= start_timestamp + "-" + c['LOG_FILE'], format= c['LOG_FORMAT'], datefmt= c['LOG_DATE_FORMAT'], level= int(c['LOG_LEVEL']))
 
-	print "[INFO] Processing: Extracting CSRs"
+	logging.info("START: Job starting, config loaded")
+
+	logging.info("Processing: Extracting CSRs")
 	csr = Csr()
 	csr.export()
 
-	print "[INFO] Processing: Extracting Articles"
+	logging.info("Processing: Extracting Articles")
 	ar = Article()
 	ar.export()	
 
-	print "[INFO] Processing: Extracting Customers"
+	logging.info("Processing: Extracting Customers")
 	cust = Customer()
 	cust.export()
 
-	print "[INFO] Processing: Extracting Accounts"
+	logging.info("Processing: Extracting Accounts")
 	a = Account()
 	a.export()
 
-	print "[INFO] Processing: Extracting Downloads"
+	logging.info("Processing: Extracting Downloads")
 	d = Download()
 	d.export()
 
-	print "[INFO] Processing: Extracting Tickets"
+	logging.info("Processing: Extracting Tickets")
 	t = Ticket()
 	t.export()
 
-	print "[INFO] Script: Job complete"
+	logging.info("FINISH: Job complete")
