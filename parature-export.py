@@ -24,6 +24,13 @@ def get_config(config_path):
 
 	return config_vars	
 
+def set_proc_name(newname):
+    from ctypes import cdll, byref, create_string_buffer
+    libc = cdll.LoadLibrary('libc.so.6')
+    buff = create_string_buffer(len(newname)+1)
+    buff.value = newname
+    libc.prctl(15, byref(buff), 0, 0, 0)
+
 def throttle(min_period):
    """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
    def _throttle(fn):
@@ -231,8 +238,11 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	
+	set_proc_name("parature-export")
+
 	now = datetime.datetime.now()
 	start_timestamp = str(now.year) + str(now.month) + str(now.day) + str(now.hour) + str(now.minute) + str(now.second)
+
 	c = get_config('./config')
 	logging.basicConfig(filename= start_timestamp + "-" + c['LOG_FILE'], format= c['LOG_FORMAT'], datefmt= c['LOG_DATE_FORMAT'], level= int(c['LOG_LEVEL']))
 
