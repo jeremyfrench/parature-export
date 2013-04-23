@@ -111,7 +111,7 @@ def extract_binaries(resource, subdirectory):
 		if url.startswith('data:'):
 			filetype = "." + url[url.find("/")+1:url.find(";")]
 			base64_string = url.split("base64,")[1]
-			filename = "embedded_" + base64_string[:15] + filetype
+			filename = "embedded_" + base64_string[:30] + filetype
 
 			save(base64.decodestring(base64_string), filename, path, "Binary")
 		else:
