@@ -1,5 +1,8 @@
 from restkit import Resource  # pip install restkit
-from restkit.errors import ResourceError, RequestFailed, RequestError 
+from restkit.errors import ResourceError, RequestFailed, RequestError
+from urlparse import urlsplit
+from BeautifulSoup import BeautifulSoup
+import base64
 import xml.etree.ElementTree as etree
 import urllib2
 import math
@@ -12,63 +15,113 @@ def get_config(config_path):
 	config_vars = dict()
 
 	with open(config_path) as f:
-	    for line in f:
-	        eq_index = line.find('=')
-	        var_name = line[:eq_index].strip()
-	        value = line[eq_index + 1:].strip()
-	        config_vars[var_name] = value
+		for line in f:
+			eq_index = line.find('=')
+			var_name = line[:eq_index].strip()
+			value = line[eq_index + 1:].strip()
+			config_vars[var_name] = value
 
 	return config_vars	
 
 def throttle(min_period):
    """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
    def _throttle(fn):
-      calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
-      def __throttle(*params, **kwargs):
-         td = datetime.datetime.now() - calltime[0]
-         elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
-         if elapsed < min_period:
-            wait_time = min_period - elapsed
-            time.sleep(wait_time / 1000)
-         rv = fn(*params, **kwargs)
-         calltime[0] = datetime.datetime.now()
-         return rv
-      return __throttle
+	  calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
+	  def __throttle(*params, **kwargs):
+		 td = datetime.datetime.now() - calltime[0]
+		 elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
+		 if elapsed < min_period:
+			wait_time = min_period - elapsed
+			time.sleep(wait_time / 1000)
+		 rv = fn(*params, **kwargs)
+		 calltime[0] = datetime.datetime.now()
+		 return rv
+	  return __throttle
    return _throttle
 
 def pretty(etree_root):
 	return etree.tostring(etree_root)
 
-def save_attachments(resource, subdirectory):
+def url2name(url):
+	return os.path.basename(urlsplit(url)[2])
 
-	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
+def save(file_data, filename, path = None):
+	if path:
+		if not os.path.exists(path):
+			os.makedirs(path)
+			
+	filename = str(path) + filename
+	
+	print "[INFO] I/O: Saving " + filename
 
+	try:
+		f = open(filename, 'wb')
+		f.write(file_data)
+		f.close()
+	except IOError as e:
+		print "[ERROR] I/O: Error number {0}: {1}".format(e.errno, e.strerror)
+
+def download(url, filename_override = None, path = None):
+	filename = url2name(url)
+	req = urllib2.Request(url)
+	r = urllib2.urlopen(req)
+	if r.info().has_key('Content-Disposition'):
+		cd = dict(map(
+			lambda x: x.strip().split('=') if '=' in x else (x.strip(),''),
+			r.info()['Content-Disposition'].split(';')))
+		if 'filename' in cd:
+			filename = cd['filename'].strip("\"'")
+	elif r.url != url: 
+		# if we were redirected, the real file name we take from the final URL
+		filename = url2name(r.url)
+	if filename_override: 
+		# we can force to save the file as specified name
+		filename = filename_override
+
+	save(r.read(), filename, path)
+
+def extract_binaries(resource, subdirectory):
+
+	path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
+
+	items = []
+
+	#Ticket style attachments
 	attachment_list = resource.findall(".//Attachment")
-
-	if attachment_list and not os.path.exists(os.path.dirname(file_path)):
-		os.makedirs(os.path.dirname(file_path))
-
 	for attachment in attachment_list:
+		items.append({'filename': attachment.find('Name').text, 'url': attachment.attrib['href']})
 
-		url = attachment.attrib['href']
-		filename = file_path + attachment.find('Name').text
+	try:
+		image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
+	except:
+		image_list = []
 
-		try:			
-			data_file = open(filename, 'w')
-			response = urllib2.urlopen(url)
-			data_file.write(response.read())
-			data_file.close()
+	#Images in articles
+	for image in image_list:
+		url = image['src']
+
+		if url.startswith('data:'):
+			filetype = "." + url[url.find("/")+1:url.find(";")]
+			base64_string = url.split("base64,")[1]
+			filename = "embedded_" + base64_string[:15] + filetype
+
+			save(base64.decodestring(base64_string), filename, path)
+		else:
+			items.append({'filename': None, 'url': url})
+
+	for item in items:		
+		
+		try:
+			download(item['url'], item['filename'], path)	
+		except urllib2.HTTPError, e:
+			print "[ERROR] HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id'])
 		except:
-			print "Could not download " + filename + " from " + str(resource.attrib['id'])
+			print "[ERROR] HTTP: Unknown error downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id'])
 
-def save_XML(data, subdirectory, filename):
-	file_path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" + filename + ".xml"
-	if not os.path.exists(os.path.dirname(file_path)):
-	    os.makedirs(os.path.dirname(file_path))
-
-	data_file = open(file_path, 'w')
-	data_file.write(data)
-	data_file.close()
+def extract_XML(data, subdirectory, filename):
+	filename = filename + ".xml"
+	path = "./" + c['JOB_ID'] + "/" + subdirectory + "/"
+	save(data, filename, path)
 
 class Parature(Resource):
 	def __init__(self, **kwargs):
@@ -99,8 +152,8 @@ class Parature(Resource):
 		count = self.api_list_count()
 		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
 		
-		print str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
-		page_start = 1
+		print "[INFO] Processing: " + str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)"
+		page_start = start_page
 		skip = 0
 		# Check for exsisting items
 		dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/"
@@ -108,10 +161,10 @@ class Parature(Resource):
 			files = [f for f in os.listdir(dir_path) if re.match(r'.*\.xml', f)]
 			done_file_count = len(files)
 			if (done_file_count == count) :
-				print "All of this type done, skipping"
+				print "[INFO] Processing: All of this type done, skipping"
 				return
 			else:
-				print "looks like an export ran before, picking up where we left off"
+				print "[INFO] Processing: Previous export identified, restarting from last position"
 				done_page = math.floor(done_file_count / int(c['LIST_PAGE_SIZE'])) + 1
 				list_doc = self.api_list(page=done_page)
 				resource_list = list_doc.findall(resource_type)
@@ -123,13 +176,12 @@ class Parature(Resource):
 					if not os.path.exists(dir_path + next_resource.attrib['id'] + '.xml'): 
 						#set the start page and offset so they can pick up where we left off
 						page_start = int(done_page)
-		    			skip = offset
-		    			
+						skip = offset
+						
 		# Cut the range down by the start page var
 		for i in range(page_start,total_pages):
-			print "Processing page " + str(i)
+			print "[INFO] Processing: " + resource_type + " page " + str(i)
 			list_doc = self.api_list(page=i)
-			print str(len(list_doc)) + " items in this page"
 			resource_list = list_doc.findall(resource_type)
 			
 			if resource_list != None:
@@ -140,12 +192,12 @@ class Parature(Resource):
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
 					try:
-						print "Getting " + resource_type + " ID " + str(resource_id)
+						print "[INFO] API: Getting " + resource_type + " ID " + str(resource_id)
 						resource_full = self.api_get(resource_id)
-						save_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
-						save_attachments(resource_full, resource_type + "/" + resource_id)
-					except ResourceError:
-						print 'Error getting resource ' + resource_id
+						extract_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
+						extract_binaries(resource_full, resource_type + "/" + resource_id)
+					except:
+						print '[ERROR] API: Unknown error getting resource ' + resource_id
 class Account(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Account/"
@@ -177,22 +229,35 @@ class Download(Parature):
 		super(Download, self).__init__()
 
 if __name__ == "__main__":
+
+	print "[INFO] Script: Job starting"
+	
 	c = get_config('./config')
 	
+	print "[INFO] Script: Config loaded"
+
+	print "[INFO] Processing: Extracting CSRs"
 	csr = Csr()
 	csr.export()
 
+	print "[INFO] Processing: Extracting Articles"
+	ar = Article()
+	ar.export()	
+
+	print "[INFO] Processing: Extracting Customers"
 	cust = Customer()
 	cust.export()
 
+	print "[INFO] Processing: Extracting Accounts"
 	a = Account()
 	a.export()
 
+	print "[INFO] Processing: Extracting Downloads"
 	d = Download()
 	d.export()
 
-	ar = Article()
-	ar.export()
-
+	print "[INFO] Processing: Extracting Tickets"
 	t = Ticket()
 	t.export()
+
+	print "[INFO] Script: Job complete"
