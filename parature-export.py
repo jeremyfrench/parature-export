@@ -25,27 +25,27 @@ def get_config(config_path):
 	return config_vars	
 
 def set_proc_name(newname):
-    from ctypes import cdll, byref, create_string_buffer
-    libc = cdll.LoadLibrary('libc.so.6')
-    buff = create_string_buffer(len(newname)+1)
-    buff.value = newname
-    libc.prctl(15, byref(buff), 0, 0, 0)
+	from ctypes import cdll, byref, create_string_buffer
+	libc = cdll.LoadLibrary('libc.so.6')
+	buff = create_string_buffer(len(newname)+1)
+	buff.value = newname
+	libc.prctl(15, byref(buff), 0, 0, 0)
 
 def throttle(min_period):
-   """Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
-   def _throttle(fn):
-	  calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
-	  def __throttle(*params, **kwargs):
-		 td = datetime.datetime.now() - calltime[0]
-		 elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
-		 if elapsed < min_period:
-			wait_time = min_period - elapsed
-			time.sleep(wait_time / 1000)
-		 rv = fn(*params, **kwargs)
-		 calltime[0] = datetime.datetime.now()
-		 return rv
-	  return __throttle
-   return _throttle
+	"""Enforces throttling policy, will not call a method two times unless min_period has elapsed"""
+	def _throttle(fn):
+		calltime = [datetime.datetime.now() - datetime.timedelta(seconds=min_period)]
+		def __throttle(*params, **kwargs):
+			td = datetime.datetime.now() - calltime[0]
+			elapsed = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 2
+			if elapsed < min_period:
+				wait_time = min_period - elapsed
+				time.sleep(wait_time / 1000)
+			rv = fn(*params, **kwargs)
+			calltime[0] = datetime.datetime.now()
+			return rv
+		return __throttle
+	return _throttle
 
 def pretty(etree_root):
 	return etree.tostring(etree_root)
