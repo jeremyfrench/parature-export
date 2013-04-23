@@ -240,8 +240,7 @@ if __name__ == "__main__":
 	
 	set_proc_name("parature-export")
 
-	now = datetime.datetime.now()
-	start_timestamp = str(now.year) + str(now.month) + str(now.day) + str(now.hour) + str(now.minute) + str(now.second)
+	start_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%S")
 
 	c = get_config('./config')
 	logging.basicConfig(filename= start_timestamp + "-" + c['LOG_FILE'], format= c['LOG_FORMAT'], datefmt= c['LOG_DATE_FORMAT'], level= int(c['LOG_LEVEL']))
