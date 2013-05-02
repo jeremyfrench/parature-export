@@ -4,6 +4,7 @@ API_ACCOUNT_ID = 000
 API_DEPARTMENT_ID = 000
 LIST_PAGE_SIZE = 100
 JOB_ID = Subdirectory-to-export-to
+DOWNLOAD_REFERER = http://mysite.com
 LOG_FILE = export.log
 LOG_LEVEL = 20
 LOG_FORMAT = %(asctime)s [%(levelname)s] %(message)s
