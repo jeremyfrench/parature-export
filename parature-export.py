@@ -72,6 +72,7 @@ def save(file_data, filename, path = None, log_type = "I/O"):
 def download(url, filename_override = None, path = None):
 	filename = url2name(url)
 	req = urllib2.Request(url)
+	req.add_header('Referer', c['DOWNLOAD_REFERER'])
 	r = urllib2.urlopen(req)
 	if r.info().has_key('Content-Disposition'):
 		cd = dict(map(
@@ -117,7 +118,13 @@ def extract_binaries(resource, subdirectory):
 		else:
 			items.append({'filename': None, 'url': url})
 
-	for item in items:		
+	#Files on Download objects
+	try:
+		items.append({'filename': None, 'url': resource.find('External_Link').text})
+	except:
+		logging.info("Download: ID {0} has no external link".format(str(resource.attrib['id'])))
+
+	for item in items:
 		
 		try:
 			download(item['url'], item['filename'], path)	
@@ -201,11 +208,21 @@ class Parature(Resource):
 					resource_id = resource.attrib['id']
 					try:
 						logging.info("API: Getting " + resource_type + " ID " + str(resource_id))
+
+						self.pre_retrieve(resource_id)
+
 						resource_full = self.api_get(resource_id)
+						
 						extract_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
 						extract_binaries(resource_full, resource_type + "/" + resource_id)
+
+						self.post_retrieve(resource_id, resource_full)
+					except AttributeError:
+						#Using the EAFP method to create pre_retrieve and post_retrieve hooks
+						pass
 					except:
 						logging.error("API: Unknown error getting resource " + resource_id)
+
 class Account(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Account/"
@@ -233,8 +250,36 @@ class Article(Parature):
 
 class Download(Parature):
 	def __init__(self, **kwargs):
+		self.visibility_toggled = []
 		self.api_resource_path = "Download/"
 		super(Download, self).__init__()
+
+	@throttle(600)
+	def pre_retrieve(self, id):
+		#Ensure download object is made visible so an external link is presented in the resource
+		resource = self.api_get(id)
+
+		try:
+			if not resource.find("./External_Link").text:
+				resource.find("./Visible").text = 'true'
+				resource.remove(resource.find("./Ext"))
+				self.put(str(resource.attrib['id']), pretty(resource), _token_=c['API_TOKEN'])
+				logging.info("Download object: ID {0} - External link visibility set to true".format(resource.attrib['id']))
+				self.visibility_toggled.append({'id': resource.attrib['id'], 'resource': resource})
+		except:
+			logging.error("Download object: ID {0} - No existing external link but couldn't enable the external link either".format(resource.attrib['id']))
+
+		return resource
+
+	def post_retrieve(self, id, resource):
+		for item in self.visibility_toggled[:]:
+			try:
+				item['resource'].find("./Visible").text = 'false'
+				self.put(str(item['id']), pretty(item['resource']), _token_=c['API_TOKEN'])
+				logging.info("Download object: ID {0} - External link visibility switched back to false".format(resource.attrib['id']))
+			except:
+				logging.error("Download object: ID {0} - Couldn't restore visibility state - link left visible".format(resource.attrib['id']))
+			self.visibility_toggled.remove(item)
 
 if __name__ == "__main__":
 	
@@ -246,6 +291,10 @@ if __name__ == "__main__":
 	logging.basicConfig(filename= start_timestamp + "-" + c['LOG_FILE'], format= c['LOG_FORMAT'], datefmt= c['LOG_DATE_FORMAT'], level= int(c['LOG_LEVEL']))
 
 	logging.info("START: Job starting, config loaded")
+
+	logging.info("Processing: Extracting Downloads")
+	d = Download()
+	d.export()
 
 	logging.info("Processing: Extracting CSRs")
 	csr = Csr()
@@ -263,12 +312,11 @@ if __name__ == "__main__":
 	a = Account()
 	a.export()
 
-	logging.info("Processing: Extracting Downloads")
-	d = Download()
-	d.export()
-
 	logging.info("Processing: Extracting Tickets")
 	t = Ticket()
 	t.export()
 
 	logging.info("FINISH: Job complete")
+
+	#TODO: If article image download redirects to non-image, don't download, raise error
+	#TODO: Add 3 retries for HTTP errors that aren't 404 or 400
