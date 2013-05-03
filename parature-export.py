@@ -89,55 +89,6 @@ def download(url, filename_override = None, path = None):
 
 	save(r.read(), filename, path, "Binary")
 
-def extract_binaries(resource, subdirectory):
-
-	path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
-
-	items = []
-
-	#Ticket style attachments
-	attachment_list = resource.findall(".//Attachment")
-	for attachment in attachment_list:
-		items.append({'filename': attachment.find('Name').text, 'url': attachment.attrib['href']})
-
-	try:
-		image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
-	except:
-		image_list = []
-
-	#Images in articles
-	for image in image_list:
-		url = image['src']
-
-		if url.startswith('data:'):
-			filetype = "." + url[url.find("/")+1:url.find(";")]
-			base64_string = url.split("base64,")[1]
-			filename = "embedded_" + base64_string[:30] + filetype
-
-			save(base64.decodestring(base64_string), filename, path, "Binary")
-		else:
-			items.append({'filename': None, 'url': url})
-
-	#Files on Download objects
-	try:
-		items.append({'filename': None, 'url': resource.find('External_Link').text})
-	except:
-		logging.info("Download: ID {0} has no external link".format(str(resource.attrib['id'])))
-
-	for item in items:
-		
-		try:
-			download(item['url'], item['filename'], path)	
-		except urllib2.HTTPError, e:
-			logging.error("HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
-		except:
-			logging.error("HTTP: Unknown error downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
-
-def extract_XML(data, subdirectory, filename):
-	filename = filename + ".xml"
-	path = "./" + c['JOB_ID'] + "/" + subdirectory + "/"
-	save(data, filename, path, "Data resource")
-
 class Parature(Resource):
 	def __init__(self, **kwargs):
 		self.api_url = c['PARATURE_URL'] + "/" + c['API_ACCOUNT_ID'] + "/" + c['API_DEPARTMENT_ID'] + "/" + self.api_resource_path
@@ -160,6 +111,48 @@ class Parature(Resource):
 	def api_list_count(self):
 		doc = self.api_list(True)
 		return doc.attrib['total']
+
+	def extract_binaries(self, resource, subdirectory):
+
+		path = "./" + c['JOB_ID'] + "/" + subdirectory + "/" 
+
+		try:
+			item_list = []
+			item_list = self.get_download_items(resource, item_list, path)
+		except AttributeError:
+			#Using the EAFP method to create get_download_items hook
+			pass
+
+		for item in item_list:
+			
+			try:
+				download(item['url'], item['filename'], path)	
+			except urllib2.HTTPError, e:
+				logging.error("HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
+			except:
+				logging.error("HTTP: Unknown error downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
+
+	def extract_XML(self, data, subdirectory, filename):
+		filename = filename + ".xml"
+		path = "./" + c['JOB_ID'] + "/" + subdirectory + "/"
+		save(data, filename, path, "Data resource")
+
+	def get_resource_data_and_binaries(self, id, type):
+		try:
+			self.pre_retrieve(id)
+		except AttributeError:
+			#Using the EAFP method to create pre_retrieve hook
+			pass
+
+		resource = self.api_get(id)						
+		self.extract_XML(data=pretty(resource), subdirectory=type, filename=id)
+		self.extract_binaries(resource, type + "/" + id)
+
+		try:
+			self.post_retrieve(id, resource)
+		except AttributeError:
+			#Using the EAFP method to create post_retrieve hook
+			pass
 
 	def export(self, start_page=0):
 		resource_type = type(self).__name__
@@ -206,22 +199,13 @@ class Parature(Resource):
 				skip = 0
 				for resource in resource_list:
 					resource_id = resource.attrib['id']
+					
+					logging.info("API: Getting " + resource_type + " ID " + str(resource_id))
+
 					try:
-						logging.info("API: Getting " + resource_type + " ID " + str(resource_id))
-
-						self.pre_retrieve(resource_id)
-
-						resource_full = self.api_get(resource_id)
-						
-						extract_XML(data=pretty(resource_full), subdirectory=resource_type, filename=resource_id)
-						extract_binaries(resource_full, resource_type + "/" + resource_id)
-
-						self.post_retrieve(resource_id, resource_full)
-					except AttributeError:
-						#Using the EAFP method to create pre_retrieve and post_retrieve hooks
-						pass
-					except:
-						logging.error("API: Unknown error getting resource " + resource_id)
+						self.get_resource_data_and_binaries(resource_id, resource_type)
+					except Exception as e:
+						logging.error("API: Unknown error getting {0} {1}, message provided: {2}".format(resource_id, resource_type, e))						
 
 class Account(Parature):
 	def __init__(self, **kwargs):
@@ -232,6 +216,14 @@ class Ticket(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Ticket/"
 		super(Ticket, self).__init__()
+
+	def get_download_items(self, resource, item_list, path):
+		#Ticket style attachments
+		attachment_list = resource.findall(".//Attachment")
+		for attachment in attachment_list:
+			item_list.append({'filename': attachment.find('Name').text, 'url': attachment.attrib['href']})
+
+		return item_list			
 
 class Customer(Parature):
 	def __init__(self, **kwargs):
@@ -247,6 +239,27 @@ class Article(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Article/"
 		super(Article, self).__init__()
+
+	def get_download_items(self, resource, item_list, path):
+		#Images in articles
+		try:
+			image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
+		except:
+			image_list = []
+
+		for image in image_list:
+			url = image['src']
+
+			if url.startswith('data:'):
+				filetype = "." + url[url.find("/")+1:url.find(";")]
+				base64_string = url.split("base64,")[1]
+				filename = "embedded_" + base64_string[:30] + filetype
+
+				save(base64.decodestring(base64_string), filename, path, "Binary")
+			else:
+				item_list.append({'filename': None, 'url': url})	
+
+		return item_list
 
 class Download(Parature):
 	def __init__(self, **kwargs):
@@ -266,10 +279,19 @@ class Download(Parature):
 				self.put(str(resource.attrib['id']), pretty(resource), _token_=c['API_TOKEN'])
 				logging.info("Download object: ID {0} - External link visibility set to true".format(resource.attrib['id']))
 				self.visibility_toggled.append({'id': resource.attrib['id'], 'resource': resource})
-		except:
-			logging.error("Download object: ID {0} - No existing external link but couldn't enable the external link either".format(resource.attrib['id']))
+		except Exception as e:
+			logging.error("Download object: ID {0} - No existing external link but couldn't enable the external link either. Message: {1}".format(resource.attrib['id'], e))
 
 		return resource
+
+	def get_download_items(self, resource, item_list, path):
+		#Files on Download objects
+		try:
+			item_list.append({'filename': None, 'url': resource.find('External_Link').text})
+		except:
+			logging.info("Download: ID {0} has no external link".format(str(resource.attrib['id'])))
+		
+		return item_list
 
 	def post_retrieve(self, id, resource):
 		for item in self.visibility_toggled[:]:
@@ -314,7 +336,7 @@ if __name__ == "__main__":
 
 	logging.info("Processing: Extracting Tickets")
 	t = Ticket()
-	t.export()
+	t.export(100)
 
 	logging.info("FINISH: Job complete")
 
