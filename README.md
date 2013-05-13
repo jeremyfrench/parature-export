@@ -1,4 +1,1 @@
-parature-export
-===============
-
-Export all data from all objects in a given Parature account
+Export all data from all objects available using a given Parature account
