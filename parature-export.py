@@ -154,11 +154,15 @@ class Parature(Resource):
 			#Using the EAFP method to create post_retrieve hook
 			pass
 
-	def export(self, start_page=0):
+	def export(self, start_page=1):
+
+		if start_page == 0:
+			start_page = 1
+
 		resource_type = type(self).__name__
 
 		count = self.api_list_count()
-		total_pages = int(math.ceil(int(count) / int(c['LIST_PAGE_SIZE'])))
+		total_pages = int(math.ceil(int(count) / float(c['LIST_PAGE_SIZE'])))
 		
 		logging.info("Processing: " + str(count) + " " + resource_type + "(s) with " + str(total_pages) + " total page(s)")
 		page_start = start_page
@@ -173,7 +177,7 @@ class Parature(Resource):
 				return
 			else:
 				logging.info("Processing: Previous export identified, restarting from last position")
-				done_page = math.floor(done_file_count / int(c['LIST_PAGE_SIZE'])) + 1
+				done_page = int(math.floor(done_file_count / float(c['LIST_PAGE_SIZE']))) + 1
 				list_doc = self.api_list(page=done_page)
 				resource_list = list_doc.findall(resource_type)
 				offset = done_file_count % int(c['LIST_PAGE_SIZE'])
@@ -187,7 +191,8 @@ class Parature(Resource):
 						skip = offset
 						
 		# Cut the range down by the start page var
-		for i in range(page_start,total_pages):
+		for i in range(page_start,total_pages+1):
+
 			logging.info("Processing: " + resource_type + " page " + str(i))
 			list_doc = self.api_list(page=i)
 			resource_list = list_doc.findall(resource_type)
@@ -336,7 +341,7 @@ if __name__ == "__main__":
 
 	logging.info("Processing: Extracting Tickets")
 	t = Ticket()
-	t.export(100)
+	t.export()
 
 	logging.info("FINISH: Job complete")
 
