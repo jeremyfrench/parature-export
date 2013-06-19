@@ -105,7 +105,7 @@ class Parature(Resource):
 
 	@throttle(600)
 	def api_list(self, count=False, page=0):
-		return self.get(_token_=c['API_TOKEN'], _total_=count, _pageSize_=c['LIST_PAGE_SIZE'], _startPage_=page, _order_="Date_Created_asc_")
+		return self.get(_token_=c['API_TOKEN'], _total_=count, _pageSize_=c['LIST_PAGE_SIZE'], _startPage_=page, _order_="Date_Created_asc_", Date_Updated_min_=c['DATE_UPDATED_MIN'])
 
 	@throttle(600)
 	def api_list_count(self):
@@ -239,6 +239,11 @@ class Csr(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Csr/"
 		super(Csr, self).__init__()
+
+	#CSR objects don't have the date updated field unlike every other object, so we'll override the list method to not try and use it
+	@throttle(600)
+	def api_list(self, count=False, page=0):
+		return self.get(_token_=c['API_TOKEN'], _total_=count, _pageSize_=c['LIST_PAGE_SIZE'], _startPage_=page, _order_="Date_Created_asc_")
 
 class Article(Parature):
 	def __init__(self, **kwargs):
