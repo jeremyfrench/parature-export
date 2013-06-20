@@ -11,6 +11,8 @@ import os
 import datetime
 import time
 import re
+import parature_browser
+import urlparse
 
 def get_config(config_path):
 	config_vars = dict()
@@ -243,10 +245,12 @@ class Csr(Parature):
 class Article(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Article/"
+		self.pb = parature_browser.parature_browser(c)
 		super(Article, self).__init__()
 
 	def get_download_items(self, resource, item_list, path):
 		#Images in articles
+		
 		try:
 			image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
 		except:
@@ -265,6 +269,24 @@ class Article(Parature):
 				item_list.append({'filename': None, 'url': url})	
 
 		return item_list
+	
+	def post_retrieve(self, id, resource):
+		page = self.pb.getPage('ics/km/kmFileList.asp?questionID=' + str(resource.attrib['id']))
+		doc_ids = []
+		for link in BeautifulSoup(page).findAll('a', href= re.compile('/ics/dm/DLRedirect\.asp')):
+			parsed_link = urlparse.urlparse(link['href'])
+			query_params = urlparse.parse_qs(parsed_link.query)
+			print query_params
+			doc_id = query_params['fileID']
+			doc_ids.append(doc_id)
+			#TODO symlinks
+		
+		if len(doc_ids) > 0:
+			resource_type = type(self).__name__
+			dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/"
+			
+			save(' '.join(str(doc_ids)), str(id) + '_links.txt', dir_path)
+			
 
 class Download(Parature):
 	def __init__(self, **kwargs):
@@ -310,7 +332,7 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	
-	set_proc_name("parature-export")
+#	set_proc_name("parature-export")
 
 	start_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%S")
 
@@ -319,29 +341,34 @@ if __name__ == "__main__":
 
 	logging.info("START: Job starting, config loaded")
 
-	logging.info("Processing: Extracting Downloads")
-	d = Download()
-	d.export()
+#	logging.info("Processing: Extracting Downloads")
+#	d = Download()
+#	d.export()
 
-	logging.info("Processing: Extracting CSRs")
-	csr = Csr()
-	csr.export()
+#	logging.info("Processing: Extracting CSRs")
+#	csr = Csr()
+#	csr.export()
 
 	logging.info("Processing: Extracting Articles")
 	ar = Article()
 	ar.export()	
 
-	logging.info("Processing: Extracting Customers")
-	cust = Customer()
-	cust.export()
+#	logging.info("Processing: Extracting Article links")
+#	ar = Article_link()
+#	ar.export()	
 
-	logging.info("Processing: Extracting Accounts")
-	a = Account()
-	a.export()
 
-	logging.info("Processing: Extracting Tickets")
-	t = Ticket()
-	t.export()
+#	logging.info("Processing: Extracting Customers")
+#	cust = Customer()
+#	cust.export()
+
+#	logging.info("Processing: Extracting Accounts")
+#	a = Account()
+#	a.export()
+
+#	logging.info("Processing: Extracting Tickets")
+#	t = Ticket()
+#	t.export()
 
 	logging.info("FINISH: Job complete")
 
