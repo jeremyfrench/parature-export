@@ -23,7 +23,7 @@ There are no flags which can be supplied to script - everything is modified in t
 
 ### API_TOKEN
 * API token for the Parature account you're aiming to use, can be found in your user settings in the Parature interface
-* Example value: CZtRKbk8xw1DiMH8mNf8bNz4s2JtQa6JZ/hR1XULdLDz4uP/2F6jE8mufUCOj07fgNWOGurW6GHu0zjgE9yxqA==
+* Example value: HY723iixw1DiMH8mNf8bNz4s2JtQa6JZ/hR1XXuhweiwioejJjE8mufUCOj07fgNWOGurW6GHu0zjgE9yxqA==
 
 ### API_ACCOUNT_ID
 * Example value: 11111
