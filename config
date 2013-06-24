@@ -10,3 +10,8 @@ LOG_FILE = export.log
 LOG_LEVEL = 20
 LOG_FORMAT = %(asctime)s [%(levelname)s] %(message)s
 LOG_DATE_FORMAT = %m/%d/%Y %I:%M:%S %p
+
+
+PARATURE_WEB_URL = https://s5.parature.com
+PARATURE_EMAIL =
+PARATURE_PASSWORD = 

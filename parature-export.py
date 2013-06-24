@@ -11,6 +11,8 @@ import os
 import datetime
 import time
 import re
+import parature_browser
+import urlparse
 
 def get_config(config_path):
 	config_vars = dict()
@@ -248,10 +250,11 @@ class Csr(Parature):
 class Article(Parature):
 	def __init__(self, **kwargs):
 		self.api_resource_path = "Article/"
+		self.pb = parature_browser.parature_browser(c)
 		super(Article, self).__init__()
 
 	def get_download_items(self, resource, item_list, path):
-		#Images in articles
+		#Images in articles	
 		try:
 			image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
 		except:
@@ -270,6 +273,19 @@ class Article(Parature):
 				item_list.append({'filename': None, 'url': url})	
 
 		return item_list
+	
+	def post_retrieve(self, id, resource):
+		resource_type = type(self).__name__
+		page = self.pb.getPage('/ics/km/kmFileList.asp?questionID=' + str(resource.attrib['id']))
+		doc_ids = []
+		for link in BeautifulSoup(page).findAll('a', href= re.compile('/ics/dm/DLRedirect\.asp')):
+			parsed_link = urlparse.urlparse(link['href'])
+			local_link = parsed_link.path + '?' + parsed_link.query
+			content, filename = self.pb.getFile(local_link)
+			dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/" + id + '_attached_files/'
+			save(content, filename, dir_path)
+			
+
 
 class Download(Parature):
 	def __init__(self, **kwargs):
@@ -335,6 +351,11 @@ if __name__ == "__main__":
 	logging.info("Processing: Extracting Articles")
 	ar = Article()
 	ar.export()	
+
+	logging.info("Processing: Extracting Article links")
+	ar = Article_link()
+	ar.export()	
+
 
 	logging.info("Processing: Extracting Customers")
 	cust = Customer()
