@@ -271,22 +271,17 @@ class Article(Parature):
 		return item_list
 	
 	def post_retrieve(self, id, resource):
-		page = self.pb.getPage('ics/km/kmFileList.asp?questionID=' + str(resource.attrib['id']))
+		resource_type = type(self).__name__
+		page = self.pb.getPage('/ics/km/kmFileList.asp?questionID=' + str(resource.attrib['id']))
 		doc_ids = []
 		for link in BeautifulSoup(page).findAll('a', href= re.compile('/ics/dm/DLRedirect\.asp')):
 			parsed_link = urlparse.urlparse(link['href'])
-			query_params = urlparse.parse_qs(parsed_link.query)
-			print query_params
-			doc_id = query_params['fileID']
-			doc_ids.append(doc_id)
-			#TODO symlinks
-		
-		if len(doc_ids) > 0:
-			resource_type = type(self).__name__
-			dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/"
+			local_link = parsed_link.path + '?' + parsed_link.query
+			content, filename = self.pb.getFile(local_link)
+			dir_path = "./" + c['JOB_ID'] + "/" + resource_type + "/" + id + '_attached_files/'
+			save(content, filename, dir_path)
 			
-			save(' '.join(str(doc_ids)), str(id) + '_links.txt', dir_path)
-			
+
 
 class Download(Parature):
 	def __init__(self, **kwargs):
