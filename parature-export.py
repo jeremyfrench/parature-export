@@ -254,8 +254,7 @@ class Article(Parature):
 		super(Article, self).__init__()
 
 	def get_download_items(self, resource, item_list, path):
-		#Images in articles
-		
+		#Images in articles	
 		try:
 			image_list = BeautifulSoup(resource.find("./Answer").text).findAll('img')
 		except:
@@ -332,7 +331,7 @@ class Download(Parature):
 
 if __name__ == "__main__":
 	
-#	set_proc_name("parature-export")
+	set_proc_name("parature-export")
 
 	start_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%S")
 
@@ -341,34 +340,34 @@ if __name__ == "__main__":
 
 	logging.info("START: Job starting, config loaded")
 
-#	logging.info("Processing: Extracting Downloads")
-#	d = Download()
-#	d.export()
+	logging.info("Processing: Extracting Downloads")
+	d = Download()
+	d.export()
 
-#	logging.info("Processing: Extracting CSRs")
-#	csr = Csr()
-#	csr.export()
+	logging.info("Processing: Extracting CSRs")
+	csr = Csr()
+	csr.export()
 
 	logging.info("Processing: Extracting Articles")
 	ar = Article()
 	ar.export()	
 
-#	logging.info("Processing: Extracting Article links")
-#	ar = Article_link()
-#	ar.export()	
+	logging.info("Processing: Extracting Article links")
+	ar = Article_link()
+	ar.export()	
 
 
-#	logging.info("Processing: Extracting Customers")
-#	cust = Customer()
-#	cust.export()
+	logging.info("Processing: Extracting Customers")
+	cust = Customer()
+	cust.export()
 
-#	logging.info("Processing: Extracting Accounts")
-#	a = Account()
-#	a.export()
+	logging.info("Processing: Extracting Accounts")
+	a = Account()
+	a.export()
 
-#	logging.info("Processing: Extracting Tickets")
-#	t = Ticket()
-#	t.export()
+	logging.info("Processing: Extracting Tickets")
+	t = Ticket()
+	t.export()
 
 	logging.info("FINISH: Job complete")
 
