@@ -1,6 +1,6 @@
 import requests
 import cgi
-import os
+
 
 class parature_browser(object):
     def __init__(self,config):
@@ -11,8 +11,7 @@ class parature_browser(object):
         payload = {}
         payload['email'] = self.config['PARATURE_EMAIL']
         payload['password'] = self.config['PARATURE_PASSWORD']
-        #TODO: config for this 
-        x = self.session.post('https://s5.parature.com/ics/service/loginSQL.asp', data = payload) 
+        self.session.post(self.config['PARATURE_WEB_URL'] + '/ics/service/loginSQL.asp', data = payload) 
         
     def getPage(self, path):
         path = 'https://s5.parature.com' + path
@@ -21,8 +20,7 @@ class parature_browser(object):
         return response.text
     
     def getFile(self, url_path):
-        path = 'https://s5.parature.com' + url_path
-            
+        path = self.config['PARATURE_WEB_URL'] + url_path
         response = self.session.get(path, allow_redirects=True)
         _, params = cgi.parse_header(response.headers.get('Content-Disposition', ''))
         filename = params['filename*'].replace("UTF-8''",'')
@@ -46,4 +44,3 @@ if __name__ == "__main__":
     
     print pb.getPage('/ics/km/kmFileList.asp?questionID=60') 
     
-    pb.saveFile('/ics/dm/DLRedirect.asp?fileID=37842', '')
