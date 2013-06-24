@@ -3,6 +3,7 @@ API_TOKEN =
 API_ACCOUNT_ID = 000
 API_DEPARTMENT_ID = 000
 LIST_PAGE_SIZE = 100
+DATE_UPDATED_MIN = 2000-01-01
 JOB_ID = Subdirectory-to-export-to
 DOWNLOAD_REFERER = http://mysite.com
 LOG_FILE = export.log
