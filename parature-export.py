@@ -103,7 +103,7 @@ class Parature(Resource):
 
 	@throttle(600)
 	def api_get(self, id):
-		return self.get(str(id), _token_=c['API_TOKEN'], _history_=True)
+		return self.get(str(id), _token_=c['API_TOKEN'], _history_="true")
 
 	@throttle(600)
 	def api_list(self, count=False, page=0):
