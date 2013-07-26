@@ -1,4 +1,7 @@
 *.py[cod]
+*.config
+*.production
+*.sandbox
 
 # C extensions
 *.so
