@@ -102,6 +102,10 @@ class Parature(Resource):
 		return root
 
 	@throttle(600)
+	def download(self, **kwargs):
+		return download(kwargs)
+
+	@throttle(600)
 	def api_get(self, id):
 		return self.get(str(id), _token_=c['API_TOKEN'], _history_="true")
 
@@ -128,7 +132,7 @@ class Parature(Resource):
 		for item in item_list:
 			
 			try:
-				download(item['url'], item['filename'], path)	
+				self.download(item['url'], item['filename'], path)	
 			except urllib2.HTTPError, e:
 				logging.error("HTTP: \"" + str(e) + "\" reported on downloading " + str(item['url']) + " from object ID " + str(resource.attrib['id']))
 			except:
@@ -228,7 +232,7 @@ class Ticket(Parature):
 		#Ticket style attachments
 		attachment_list = resource.findall(".//Attachment")
 		for attachment in attachment_list:
-			item_list.append({'filename': attachment.find('Guid').text, 'url': attachment.attrib['href']})
+			item_list.append({'filename': attachment.find('Name').text, 'url': attachment.attrib['href']})
 
 		return item_list			
 
