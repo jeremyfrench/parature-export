@@ -232,7 +232,7 @@ class Ticket(Parature):
 		#Ticket style attachments
 		attachment_list = resource.findall(".//Attachment")
 		for attachment in attachment_list:
-			item_list.append({'filename': attachment.find('Name').text, 'url': attachment.attrib['href']})
+			item_list.append({'filename': attachment.find('Guid').text, 'url': attachment.attrib['href']})
 
 		return item_list			
 
